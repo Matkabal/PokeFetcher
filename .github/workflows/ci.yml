@@ -19,9 +19,10 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
+          cache: maven   # cache do ~/.m2
 
-      - name: Build com Maven (sem testes)
-        run: ./mvnw -B -DskipTests package
+      - name: Build (sem testes)
+        run: mvn -B -DskipTests package
 
-      - name: Executar testes
-        run: ./mvnw -B test
+      - name: Testes
+        run: mvn -B test
