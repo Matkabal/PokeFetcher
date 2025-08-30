@@ -1,0 +1,55 @@
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USER}
+    password: ${DB_PASS}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      pool-name: PokeFetcherPool
+      maximum-pool-size: ${DB_POOL_MAX:20}
+      minimum-idle: ${DB_POOL_MIN:5}
+      connection-timeout: ${DB_CONN_TIMEOUT_MS:30000}
+      validation-timeout: ${DB_VALIDATION_MS:5000}
+      idle-timeout: ${DB_IDLE_TIMEOUT_MS:600000}
+      max-lifetime: ${DB_MAX_LIFETIME_MS:1800000}
+      keepalive-time: ${DB_KEEPALIVE_MS:300000}
+      auto-commit: true
+      register-mbeans: ${DB_REGISTER_MBEANS:false}
+
+    jpa:
+      hibernate:
+        ddl-auto: create
+      properties:
+        hibernate:
+          dialect: org.hibernate.dialect.PostgreSQLDialect
+      show-sql: false
+
+  sql:
+    init:
+      mode: never
+
+  rabbitmq:
+    host: ${RABBITMQ_HOST}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER}
+    password: ${RABBITMQ_PASS}
+    virtual-host: ${RABBITMQ_VHOST:/}
+    requested-heartbeat: ${RABBITMQ_HEARTBEAT:30}
+
+server:
+  port: ${PORT:8080}
+  compression:
+    enabled: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,loggers,prometheus
+  endpoint:
+    health:
+      show-details: never
+
+logging:
+  level:
+    root: INFO
