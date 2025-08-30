@@ -1,0 +1,63 @@
+name: CD to EC2 (Docker + GHCR)
+
+on:
+  push:
+    branches: ["master"]
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Definir nome da imagem (lowercase)
+        id: vars
+        run: |
+          REPO_LC="${GITHUB_REPOSITORY,,}"
+          echo "IMAGE=ghcr.io/${REPO_LC}:latest" >> $GITHUB_OUTPUT
+
+      - name: Login no GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build da imagem
+        run: docker build -t ${{ steps.vars.outputs.IMAGE }} .
+
+      - name: Push da imagem
+        run: docker push ${{ steps.vars.outputs.IMAGE }}
+
+      # (Opcional) Enviar docker-compose.yml do repo para o EC2
+      # Se você prefere manter o compose apenas no servidor, remova este passo.
+      - name: Copiar docker-compose.yml para o EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: "docker-compose.yml"
+          target: "/opt/apps/pokefetcher/"
+
+      - name: Deploy no EC2
+        uses: appleboy/ssh-action@v1.1.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -e
+            cd /opt/apps/pokefetcher
+            echo ${{ secrets.GHCR_PAT }} | docker login ghcr.io -u ${{ secrets.GHCR_USERNAME }} --password-stdin
+            # Atualiza a referência de imagem no compose (caso você mantenha a linha estática)
+            sed -i 's|image: .*|image: '"${{ steps.vars.outputs.IMAGE }}"'|' docker-compose.yml
+            docker compose pull
+            docker compose up -d
+            docker image prune -f
