@@ -2,11 +2,19 @@ package br.com.matkabal.pokefetcher.service;
 
 import br.com.matkabal.pokefetcher.exceptions.PokemonException;
 import br.com.matkabal.pokefetcher.model.Pokemon;
+import org.springframework.amqp.core.MessageDeliveryMode;
+import org.springframework.amqp.core.MessagePostProcessor;
+import org.springframework.amqp.rabbit.connection.CorrelationData;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
+
+import java.util.UUID;
+
+import static br.com.matkabal.pokefetcher.config.RabbitConfig.*;
 
 @Service
 public class PokeService {
@@ -17,12 +25,39 @@ public class PokeService {
     @Autowired
     private RestTemplate restTemplate;
 
-    public Pokemon getPokemon(String name) throws PokemonException{
+    @Autowired
+    private RabbitTemplate rabbitTemplate;
+
+
+    public Pokemon getPokemon(String name) {
         try{
             String url = baseUrl + "/pokemon/" + name;
             return restTemplate.getForObject(url, Pokemon.class);
         }catch (HttpClientErrorException exception){
-            throw new PokemonException("Pokemon doesn't exist");
+            throw new PokemonException();
+        }
+    }
+
+    public boolean publishPokemon(Pokemon pokemon){
+        try {
+            String id = UUID.randomUUID().toString();
+
+            MessagePostProcessor mpp = msg -> {
+                msg.getMessageProperties().setDeliveryMode(MessageDeliveryMode.PERSISTENT);
+                msg.getMessageProperties().setHeader("x-source", "poke-fetcher");
+                msg.getMessageProperties().setHeader("x-event", ROUTING_KEY);
+                msg.getMessageProperties().setMessageId(id);
+                return msg;
+            };
+
+            CorrelationData correlation = new CorrelationData(id);
+
+            rabbitTemplate.convertAndSend(EXCHANGE, ROUTING_KEY, pokemon, mpp, correlation);
+            return true;
+        } catch (Exception e) {
+            throw new PokemonException("Pokemon do not send");
         }
     }
 }
+
+

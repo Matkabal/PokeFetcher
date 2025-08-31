@@ -25,7 +25,17 @@ public class PokeController {
     public ResponseEntity<?> getPokemon(@PathVariable String name){
         try{
             Pokemon pokemon = pokeService.getPokemon(name);
-            return ResponseEntity.status(HttpStatus.OK).body(pokemon);
+            boolean isSend = pokeService.publishPokemon(pokemon);
+            if(isSend){
+                return ResponseEntity.status(HttpStatus.OK).body(Map.of(
+                        name, "data about the pokemon sent to the email of registered users"
+                ));
+            }else{
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(
+                        "error", "Unable to send email",
+                        "message", "Pokemon exists, but unable to send email"
+                ));
+            }
         }catch (PokemonException exception){
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(
                     "error", exception.getMessage(),
