@@ -11,6 +11,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.Map;
+
 @RestController()
 @RequestMapping("/api/user/email")
 public class UserEmailController {
@@ -19,14 +21,16 @@ public class UserEmailController {
     private UserEmailService userEmailService;
 
     @PostMapping("/add")
-    public ResponseEntity<UserEmail> registerEmail(@RequestBody UserEmail email){
+    public ResponseEntity<?> registerEmail(@RequestBody UserEmail email){
 
         try{
             UserEmail userEmail = userEmailService.saveUserEmail(email);
             return ResponseEntity.status(HttpStatus.CREATED).body(userEmail);
         }catch (PokemonException exception){
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(null);
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
+                    "error", exception.getMessage(),
+                    "message", "Create other user or other email"
+            ));
         }
-
     }
 }
