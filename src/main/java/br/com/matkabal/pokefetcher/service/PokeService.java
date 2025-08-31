@@ -2,6 +2,7 @@ package br.com.matkabal.pokefetcher.service;
 
 import br.com.matkabal.pokefetcher.exceptions.PokemonException;
 import br.com.matkabal.pokefetcher.model.Pokemon;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.MessageDeliveryMode;
 import org.springframework.amqp.core.MessagePostProcessor;
 import org.springframework.amqp.rabbit.connection.CorrelationData;
@@ -17,6 +18,7 @@ import java.util.UUID;
 import static br.com.matkabal.pokefetcher.config.RabbitConfig.*;
 
 @Service
+@Slf4j
 public class PokeService {
 
     @Value("${pokeapi.base-url}")
@@ -55,6 +57,7 @@ public class PokeService {
             rabbitTemplate.convertAndSend(EXCHANGE, ROUTING_KEY, pokemon, mpp, correlation);
             return true;
         } catch (Exception e) {
+            log.error("[Error in PokeService][{}]",e.getMessage(), e);
             throw new PokemonException("Pokemon do not send");
         }
     }
